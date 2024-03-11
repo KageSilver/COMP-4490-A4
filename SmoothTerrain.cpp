@@ -126,7 +126,7 @@ void createPatch(int p0, int p1, int p2, int p3) {
 }//end createPatch
 
 // Used to build all of the vertices for the curves
-void buildPatches() {
+void buildTerrain() {
     for (int j=0; j<5; j++) {
         for (int i = 0; i<PATCH_VERTICES; i++) {
             //Setting the control points
@@ -144,7 +144,7 @@ void buildPatches() {
             }//end if
         }//end for
     }//end for
-}//end buildCurves
+}//end buildTerrain
 
 
 // Start of OpenGL drawing
@@ -172,7 +172,7 @@ void loadBuffer(GLuint vPosition) {
 
 // OpenGL initialization
 void init() {
-    buildPatches();
+    buildTerrain();
 
     // Create vertex array objects
     glGenVertexArrays(1, VAOs);
