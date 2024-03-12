@@ -17,7 +17,7 @@
 // Define a helpful macro for handling offsets into buffer objects
 #define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
 
-extern GLuint InitShader(const char* vShaderFile, const char* fShaderFile);
+extern GLuint InitShader(const char* vShaderFile, const char* fShaderFile, const char* tcs, const char* tes);
 
 // Implement the following...
 

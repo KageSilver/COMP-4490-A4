@@ -178,7 +178,7 @@ void init() {
     glGenVertexArrays(1, VAOs);
 
     // Load shader set
-    Program = InitShader("a4vshader.glsl", "a4fshader.glsl");
+    Program = InitShader("a4vshader.glsl", "a4fshader.glsl", "a4tcs.glsl", "a4tes.glsl");
     //Might need something more for tesselation shader
     glUseProgram(Program);
     GLuint vPosition = glGetAttribLocation(Program, "vPosition");

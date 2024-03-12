@@ -7,6 +7,6 @@ I am running this on a Windows 10 PC with an AMD Ryzen 5 5600X 6-Core Processor 
 
 
 ### Other notes:
-I used parts of my assignment 3 solution and the tesselation example provided on UMLearn as a base example for my programs. It also uses the example4 shaders as a base for the illumination shaders.
+I used parts of my assignment 3 solution and the tesselation examples provided on UMLearn as a base example for my programs. It also uses the example4 shaders as a base for the illumination shaders.
 
 <br> 

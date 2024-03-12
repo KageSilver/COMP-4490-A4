@@ -29,20 +29,22 @@ readShaderSource(const char* shaderFile)
 
 // Create a GLSL program object from vertex and fragment shader files
 GLuint
-InitShader(const char* vShaderFile, const char* fShaderFile)
+InitShader(const char* vShaderFile, const char* fShaderFile, const char* tcs, const char* tes)
 {
    struct Shader {
       const char*  filename;
       GLenum       type;
       GLchar*      source;
-   }  shaders[2] = {
+   }  shaders[4] = {
       { vShaderFile, GL_VERTEX_SHADER, NULL },
-      { fShaderFile, GL_FRAGMENT_SHADER, NULL }
+      { fShaderFile, GL_FRAGMENT_SHADER, NULL },
+      { tcs, GL_TESS_CONTROL_SHADER, NULL },
+      { tes, GL_TESS_EVALUATION_SHADER, NULL }
    };
 
    GLuint program = glCreateProgram();
     
-   for ( int i = 0; i < 2; ++i ) {
+   for ( int i = 0; i < 4; ++i ) {
       Shader& s = shaders[i];
       s.source = readShaderSource( s.filename );
       if ( shaders[i].source == NULL ) {
