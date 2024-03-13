@@ -24,7 +24,7 @@
 #include <glm/gtc/constants.hpp>
 
 //Program Constants
-const char *WINDOW_TITLE = "Flight Simulator";
+const char *WINDOW_TITLE = "Smooth Terrain";
 const double FRAME_RATE_MS = 1000.0 / 60.0;
 
 int windowWidth = 0;
@@ -34,15 +34,16 @@ int windowHeight = 0;
 // Bezier Patches Requirements
 //---------------------------------------------------------------------------
 const int NUM_PATCHES = 4;
+const int NUM_GROUPS = 20; //Arbitrary, fix later
 const int NUM_COLOURS = 5;
 
-typedef glm::vec4  point4;
+typedef glm::vec4 point4;
 
-const int PATCH_VERTICES = 16 * 4; // patches; don't worry about duplicate vertices
-glm::vec4 patchesVertices[PATCH_VERTICES];
+const int PATCH_VERTICES = 16;
+const int GROUP_VERTICES = PATCH_VERTICES * NUM_PATCHES; // patches; don't worry about duplicate vertices
 
 //The points of the vertices of the patch
-point4 points[PATCH_VERTICES] = {
+point4 patchPoints[GROUP_VERTICES] = {
   // vertex order: p00 p01 p02 p03 p10 p11 p12 ... p33 with p00 bottom-left, p01 closer to the next patch + 1
   
   point4( -1.0, -0.5,  1.0, 1.0 ),
@@ -129,7 +130,12 @@ point4 points[PATCH_VERTICES] = {
   point4(  1.0, -0.5, -1.0, 1.0 )
 };
 
-//The colours of the mountain
+
+const int WORLD_VERTICES = GROUP_VERTICES*NUM_GROUPS;
+
+glm::vec4 worldVertices[WORLD_VERTICES];
+
+//The colours of the mountains
 glm::vec4 colours[NUM_COLOURS] = {
     glm::vec4(0.0588,0.3216,0.7294,1.0), //Blue water
     glm::vec4(0.2667,0.6196,0.1137,1.0), //Green grass
@@ -233,14 +239,15 @@ void loadBuffer(GLuint vPosition) {
     // Here for size of stack allocation
     GLuint buffer;
 
-    // Loading in the buffer for the curves
+    // Loading in the buffer for the patches
     glBindVertexArray(VAOs[0]);
 
     // Creating and initializing a buffer object
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    // Making sure it has enough space for just the curves
-    glBufferData(GL_ARRAY_BUFFER, sizeof(patchesVertices), patchesVertices, GL_STATIC_DRAW);
+    // Making sure it has enough space for the whole terrain
+    glBufferData(GL_ARRAY_BUFFER, sizeof(patchPoints), patchPoints, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(patchesVertices), patchesVertices, GL_STATIC_DRAW);
     
     // Set up vertex data for this vao
     glEnableVertexAttribArray(vPosition);
@@ -250,8 +257,8 @@ void loadBuffer(GLuint vPosition) {
 
 // OpenGL initialization
 void init() {
-    buildTerrain();
-
+    //buildTerrain();
+    
     // Create vertex array objects
     glGenVertexArrays(1, VAOs);
 
@@ -269,8 +276,8 @@ void init() {
 
     glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
 
-    //Determines how many vertices are grouped into a patch (triangles, so 3)
-    glPatchParameteri(GL_PATCH_VERTICES, 3);
+    //Determines how many vertices are grouped into a patch (patches, so 16)
+    glPatchParameteri(GL_PATCH_VERTICES, PATCH_VERTICES);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -318,6 +325,10 @@ void display(void) {
     const glm::vec3 viewer_pos(0.0, 2.0, 2.0);
     
     glm::mat4 trans, cameraRot, rot, model_view;
+
+    trans = glm::translate(trans, -viewer_pos);
+
+    model_view = trans*glm::scale(glm::mat4(), glm::vec3(0.5,0.5,0.5));
 
     //Drawing the splines
     drawPatches(model_view);
