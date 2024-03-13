@@ -33,16 +33,101 @@ int windowHeight = 0;
 
 // Bezier Patches Requirements
 //---------------------------------------------------------------------------
-const int NUM_PATCHES = 4;//6;
+const int NUM_PATCHES = 4;
 const int NUM_COLOURS = 5;
 
-const int PATCH_VERTICES = 500; //Will need to be calculated later
+typedef glm::vec4  point4;
 
+const int PATCH_VERTICES = 16 * 4; // patches; don't worry about duplicate vertices
 glm::vec4 patchesVertices[PATCH_VERTICES];
 
+//The points of the vertices of the patch
+point4 points[PATCH_VERTICES] = {
+  // vertex order: p00 p01 p02 p03 p10 p11 p12 ... p33 with p00 bottom-left, p01 closer to the next patch + 1
+  
+  point4( -1.0, -0.5,  1.0, 1.0 ),
+  point4( -0.5,  0.5,  1.0, 1.0 ),
+  point4(  0.5,  0.5,  1.0, 1.0 ),
+  point4(  1.0, 0.25,  1.0, 1.0 ),
 
-//The set vertices for the bezier patch. Will need to change the number of vertices.
-glm::vec4 bezierPatch[PATCH_VERTICES];
+  point4( -1.0,-0.75,  0.5, 1.0 ),
+  point4( -0.5,-0.75,  0.5, 1.0 ),
+  point4(  0.5, -0.5,  0.5, 1.0 ),
+  point4(  1.0, -0.5,  0.5, 1.0 ),
+
+  point4( -1.0, -0.5, -0.5, 1.0 ),
+  point4( -0.5, -0.5, -0.5, 1.0 ),
+  point4(  0.5,-0.44, -0.5, 1.0 ),
+  point4(  1.0,-0.15, -0.5, 1.0 ),
+
+  point4( -1.0,  0.4, -1.0, 1.0 ),
+  point4( -0.5, -0.5, -1.0, 1.0 ),
+  point4(  0.5,  0.5, -1.0, 1.0 ),
+  point4(  1.0, -0.5, -1.0, 1.0 ),
+
+
+  point4( -1.0, 0.25,  1.0, 1.0 ),
+  point4( -0.5,  0.5,  1.0, 1.0 ),
+  point4(  0.5,  0.5,  1.0, 1.0 ),
+  point4(  1.0, -0.5,  1.0, 1.0 ),
+
+  point4( -1.0, -0.5,  0.5, 1.0 ),
+  point4( -0.5,  0.5,  0.5, 1.0 ),
+  point4(  0.5,-0.75,  0.5, 1.0 ),
+  point4(  1.0,-0.75,  0.5, 1.0 ),
+
+  point4( -1.0,-0.15, -0.5, 1.0 ),
+  point4( -0.5, -0.5, -0.5, 1.0 ),
+  point4(  0.5,-0.44, -0.5, 1.0 ),
+  point4(  1.0, -0.5, -0.5, 1.0 ),
+
+  point4( -1.0, -0.5, -1.0, 1.0 ),
+  point4( -0.5, -0.5, -1.0, 1.0 ),
+  point4(  0.5,  0.5, -1.0, 1.0 ),
+  point4(  1.0,  0.4, -1.0, 1.0 ),
+
+
+  point4( -1.0,  0.4, 1.0, 1.0 ),
+  point4( -0.5, -0.5, 1.0, 1.0 ),
+  point4(  0.5,  0.5, 1.0, 1.0 ),
+  point4(  1.0, -0.5, 1.0, 1.0 ),
+
+  point4( -1.0,-0.75,  0.5, 1.0 ),
+  point4( -0.5,-0.75,  0.5, 1.0 ),
+  point4(  0.5, -0.5,  0.5, 1.0 ),
+  point4(  1.0, -0.5,  0.5, 1.0 ),
+
+  point4( -1.0, -0.5, -0.5, 1.0 ),
+  point4( -0.5, -0.5, -0.5, 1.0 ),
+  point4(  0.5,-0.44, -0.5, 1.0 ),
+  point4(  1.0, -0.5, -0.5, 1.0 ),
+
+  point4( -1.0, -0.5, -1.0, 1.0 ),
+  point4( -0.5,  0.5, -1.0, 1.0 ),
+  point4(  0.5,  0.5, -1.0, 1.0 ),
+  point4(  1.0, 0.25, -1.0, 1.0 ),
+
+
+  point4( -1.0, -0.5, 1.0, 1.0 ),
+  point4( -0.5, -0.5, 1.0, 1.0 ),
+  point4(  0.5,  0.5, 1.0, 1.0 ),
+  point4(  1.0,  0.4, 1.0, 1.0 ),
+
+  point4( -1.0, -0.5,  0.5, 1.0 ),
+  point4( -0.5,  0.5,  0.5, 1.0 ),
+  point4(  0.5,-0.75,  0.5, 1.0 ),
+  point4(  1.0,-0.75,  0.5, 1.0 ),
+
+  point4( -1.0, -0.5, -0.5, 1.0 ),
+  point4( -0.5, -0.5, -0.5, 1.0 ),
+  point4(  0.5,-0.44, -0.5, 1.0 ),
+  point4(  1.0, -0.5, -0.5, 1.0 ),
+
+  point4( -1.0, 0.25, -1.0, 1.0 ),
+  point4( -0.5,  0.5, -1.0, 1.0 ),
+  point4(  0.5,  0.5, -1.0, 1.0 ),
+  point4(  1.0, -0.5, -1.0, 1.0 )
+};
 
 //The colours of the mountain
 glm::vec4 colours[NUM_COLOURS] = {
@@ -58,12 +143,6 @@ glm::vec4 colours[NUM_COLOURS] = {
 //--------------------------------------------------------------------------
 const float CAMERA_SPEED = 0.05f;
 bool isMoving = true;
-
-
-glm::mat4 BezierBasis = glm::mat4(-1, 3,-3,1,
-                                   3,-6, 3,0,
-                                  -3, 3, 0,0,
-                                   1, 0, 0,0);
 
 
 // Subdivisions
@@ -87,8 +166,7 @@ GLuint VAOs[1];
 GLuint Program;
 
 // Model-view matrix uniform location
-GLuint ModelView;
-GLuint Projection;
+GLuint ModelView, Projection, Outline;
 
 
 
@@ -125,7 +203,7 @@ void createPatch(int p0, int p1, int p2, int p3) {
     */
 }//end createPatch
 
-// Used to build all of the vertices for the curves
+// Used to build all of the vertices for the terrain
 void buildTerrain() {
     for (int j=0; j<5; j++) {
         for (int i = 0; i<PATCH_VERTICES; i++) {
@@ -162,7 +240,7 @@ void loadBuffer(GLuint vPosition) {
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     // Making sure it has enough space for just the curves
-    glBufferData(GL_ARRAY_BUFFER, sizeof(bezierPatch), bezierPatch, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(patchesVertices), patchesVertices, GL_STATIC_DRAW);
     
     // Set up vertex data for this vao
     glEnableVertexAttribArray(vPosition);
@@ -187,8 +265,12 @@ void init() {
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(Program, "ModelView");
     Projection = glGetUniformLocation(Program, "Projection");
+    Outline = glGetUniformLocation(Program, "Outline");
 
     glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
+
+    //Determines how many vertices are grouped into a patch (triangles, so 3)
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -206,14 +288,24 @@ void drawPatches( glm::mat4 model_view ) {
     glUseProgram(Program);
 
     glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view));
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); //Fill in the vertices
+    glUniform1i(Outline, 1);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //Drawing the outlines
+    glLineWidth(1.5f);
 
-    //Draw all of the lines to make up the spline
-    for ( int i=0; i<PATCH_VERTICES; i++ ) {
-        glDrawArrays(GL_LINES, i, 2);
+    //Draw all of the outlines to make up the patch
+    for ( int i=0; i<NUM_PATCHES; i++ ) {
+        glDrawArrays(GL_PATCHES, i, PATCH_VERTICES);
     }//end for
+
+    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view * glm::translate(glm::mat4(), glm::vec3(0.0,0.0,0.01))));
+    glUniform1i(Outline, 0);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); //Fill in the vertices
+
+    //Fill in all of the patches
+    for ( int i=0; i<NUM_PATCHES; i++ ) {
+        glDrawArrays(GL_PATCHES, i, PATCH_VERTICES);
+    }//end for
+
 }//end drawPatches
 
 
