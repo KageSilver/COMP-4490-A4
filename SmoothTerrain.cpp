@@ -35,6 +35,7 @@ int windowHeight = 0;
 //---------------------------------------------------------------------------
 const int NUM_PATCHES = 4;
 const int NUM_GROUPS = 20; //Arbitrary, fix later
+const int ALL_PATCHES = 1;//NUM_PATCHES*NUM_GROUPS;
 const int NUM_COLOURS = 5;
 
 typedef glm::vec4 point4;
@@ -160,12 +161,6 @@ int n = 1;
 bool displayOutlines = true;
 
 
-// Program-required variables
-//----------------------------------------------------------------------------
-
-// Need global access to VAOs
-GLuint VAOs[1];
-
 
 // Shader program variables
 //------------------------------------------------------------
@@ -182,6 +177,9 @@ GLuint ModelView, Projection, Outline;
 int counterBezier = 0;
 // Used to create the vertices along a bezier spline segment.
 // Takes in a variable for the offset positions of the control points.
+//Will need to translate each patch in the group by 2 units in whichever
+//direction so that it can generate the patch accordingly.
+//The control points in the corners must be connected.
 void createPatch(int p0, int p1, int p2, int p3) {
     float x = 0;
     float y = 0;
@@ -189,28 +187,11 @@ void createPatch(int p0, int p1, int p2, int p3) {
     glm::vec4 xVertex;
     glm::vec4 yVertex;
     glm::mat4 xValues;
-    /*xValues[0] = glm::vec4(initialControlPoints[p0].x,
-                            initialControlPoints[p1].x,
-                            initialControlPoints[p2].x,
-                            initialControlPoints[p3].x);
-    glm::mat4 yValues;
-    yValues[0] = glm::vec4(initialControlPoints[p0].y,
-                            initialControlPoints[p1].y,
-                            initialControlPoints[p2].y,
-                            initialControlPoints[p3].y);
-    for ( float i=0; i<=1; i+=t ) {
-        tValues = glm::vec4(pow(i,3),pow(i,2),i,1);
-        xVertex = tValues*BezierBasis*xValues[0];
-        x = xVertex[0]+xVertex[1]+xVertex[2]+xVertex[3];
-        yVertex = tValues*BezierBasis*yValues[0];
-        y = yVertex[0]+yVertex[1]+yVertex[2]+yVertex[3];
-        bezierVertices[counterBezier++] = glm::vec4(x,y,0.0,1.0);
-    }//end for
-    */
 }//end createPatch
 
 // Used to build all of the vertices for the terrain
 void buildTerrain() {
+    //Redo logic here
     for (int j=0; j<5; j++) {
         for (int i = 0; i<PATCH_VERTICES; i++) {
             //Setting the control points
@@ -234,13 +215,18 @@ void buildTerrain() {
 // Start of OpenGL drawing
 //-------------------------------------------------------------------
 
-// Used to load the buffer
-void loadBuffer(GLuint vPosition) {
+// OpenGL initialization
+void init() {
+    //buildTerrain();
+    // Need global access to the VAO
+    GLuint VAO;
+    // Create vertex array objects
+    glGenVertexArrays(1, &VAO);
+    // Loading in the buffer for the patches
+    glBindVertexArray(VAO);
+
     // Here for size of stack allocation
     GLuint buffer;
-
-    // Loading in the buffer for the patches
-    glBindVertexArray(VAOs[0]);
 
     // Creating and initializing a buffer object
     glGenBuffers(1, &buffer);
@@ -249,26 +235,15 @@ void loadBuffer(GLuint vPosition) {
     glBufferData(GL_ARRAY_BUFFER, sizeof(patchPoints), patchPoints, GL_STATIC_DRAW);
     //glBufferData(GL_ARRAY_BUFFER, sizeof(patchesVertices), patchesVertices, GL_STATIC_DRAW);
     
-    // Set up vertex data for this vao
-    glEnableVertexAttribArray(vPosition);
-    glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
-}//end loadBuffer
-
-
-// OpenGL initialization
-void init() {
-    //buildTerrain();
-    
-    // Create vertex array objects
-    glGenVertexArrays(1, VAOs);
-
     // Load shader set
     Program = InitShader("a4vshader.glsl", "a4fshader.glsl", "a4tcs.glsl", "a4tes.glsl");
-    //Might need something more for tesselation shader
     glUseProgram(Program);
-    GLuint vPosition = glGetAttribLocation(Program, "vPosition");
 
-    loadBuffer(vPosition);
+    // Set up vertex data for the vao
+    GLuint vPosition = glGetAttribLocation(Program, "vPosition");
+    glEnableVertexAttribArray(vPosition);
+    glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(Program, "ModelView");
     Projection = glGetUniformLocation(Program, "Projection");
@@ -292,26 +267,27 @@ void init() {
 
 //Used for drawing the splines in our scene
 void drawPatches( glm::mat4 model_view ) {
-    glUseProgram(Program);
 
     glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view));
-    glUniform1i(Outline, 1);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //Drawing the outlines
-    glLineWidth(1.5f);
-
-    //Draw all of the outlines to make up the patch
-    for ( int i=0; i<NUM_PATCHES; i++ ) {
-        glDrawArrays(GL_PATCHES, i, PATCH_VERTICES);
-    }//end for
-
-    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view * glm::translate(glm::mat4(), glm::vec3(0.0,0.0,0.01))));
     glUniform1i(Outline, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); //Fill in the vertices
 
+    glDrawArrays(GL_PATCHES, 0, PATCH_VERTICES);
     //Fill in all of the patches
-    for ( int i=0; i<NUM_PATCHES; i++ ) {
-        glDrawArrays(GL_PATCHES, i, PATCH_VERTICES);
-    }//end for
+    //for ( int i=0; i<ALL_PATCHES; i++ ) {
+    //    glDrawArrays(GL_PATCHES, i*ALL_PATCHES, PATCH_VERTICES);
+    //}//end for
+    
+    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view * glm::translate(glm::mat4(), glm::vec3(0.0,0.0,0.001))));
+    glUniform1i(Outline, 1);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //Drawing the outlines
+    glLineWidth(1.5f);
+    glDrawArrays(GL_PATCHES, 0, PATCH_VERTICES);
+
+    //Draw all of the outlines to make up the patch
+    //for ( int i=0; i<ALL_PATCHES; i++ ) {
+    //    glDrawArrays(GL_PATCHES, i*ALL_PATCHES, PATCH_VERTICES);
+    //}//end for
 
 }//end drawPatches
 
@@ -322,13 +298,13 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Generate the model-view matrix
-    const glm::vec3 viewer_pos(0.0, 2.0, 2.0);
+    const glm::vec3 viewer_pos(0.0, 0.0, 2.0);
     
     glm::mat4 trans, cameraRot, rot, model_view;
 
     trans = glm::translate(trans, -viewer_pos);
 
-    model_view = trans*glm::scale(glm::mat4(), glm::vec3(0.5,0.5,0.5));
+    model_view = trans;//*glm::scale(glm::mat4(), glm::vec3(0.5,0.5,0.5));
 
     //Drawing the splines
     drawPatches(model_view);
@@ -410,6 +386,7 @@ void keyboard(unsigned char key, int x, int y) {
                 displayOutlines = false;
             else
                 displayOutlines = true;
+            break;
     }//end switch-case
 }//end keyboard
 
@@ -419,4 +396,7 @@ void reshape (int width, int height) {
     glViewport( 0, 0, width, height );
 
     GLfloat aspect = GLfloat(width)/height;
+    glm::mat4  projection = glm::perspective( glm::radians(45.0f), aspect, 0.5f, 10.0f );
+
+    glUniformMatrix4fv( Projection, 1, GL_FALSE, glm::value_ptr(projection) );
 }//end reshape

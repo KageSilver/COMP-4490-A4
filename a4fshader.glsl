@@ -6,15 +6,17 @@
 ------------------------------------------------------*/
 #version 150
 
-in vec4 input_colour;
+//in vec4 input_colour;
 
-out vec4 out_colour;
+out vec4 fColor;
 uniform bool Outline;
+
+//Use the z value to determine the colours.
 
 void main() {
     if (Outline) {
-        out_colour = vec4(0.0,0.0,0.0,1.0);
+        fColor = vec4(0.0,0.0,0.0,1.0);
     } else {
-        out_colour = input_colour;
+        fColor = vec4(0.0,1.0,1.0,1.0);//input_colour;
     }//end if-else
 }//end main
