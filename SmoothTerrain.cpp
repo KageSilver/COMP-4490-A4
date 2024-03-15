@@ -38,6 +38,7 @@ const int NUM_ROWS = 10;
 const int NUM_COLUMNS = 12;
 
 typedef glm::vec4 point4;
+typedef glm::vec4 color4;
 
 const int PATCH_VERTICES = 16;
 const int GROUP_VERTICES = PATCH_VERTICES * NUM_PATCHES; // patches; don't worry about duplicate vertices
@@ -130,8 +131,15 @@ point4 patchPoints[GROUP_VERTICES] = {
   point4(  1.0, -0.5, -1.0, 1.0 )
 };
 
-
 const glm::vec3 START_POSITION = glm::vec3(-14.0,0.0,0.5);
+
+//The colours of the mountains
+glm::vec4 colours[4] = {
+    glm::vec4(0.2353, 0.3961, 0.6314, 1.0), //Blue water
+    glm::vec4(0.5843, 0.8588, 0.4667, 1.0), //Green grass
+    glm::vec4(0.6627,0.6627,0.6627,1.0), //Grey mountains
+    glm::vec4(0.8706,0.9882,1.0,1.0) //White peaks
+};
 
 
 // Camera Requirements
@@ -170,6 +178,32 @@ GLuint ModelView, Projection, Outline, Tessellation;
 // Start of OpenGL drawing
 //-------------------------------------------------------------------
 
+//Essentially fully taken from example 4
+void initLighting() {
+    // Initialize shader lighting parameters
+    point4 light_position( 0.0, 0.0, -1.0, 0.0 );
+    color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
+    color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
+    color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
+
+    color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
+    color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
+    color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
+    float  material_shininess = 100.0;
+
+    color4 ambient_product = light_ambient * material_ambient;
+    color4 diffuse_product = light_diffuse * material_diffuse;
+    color4 specular_product = light_specular * material_specular;
+
+    glUniform4fv( glGetUniformLocation(Program, "AmbientProduct"), 1, glm::value_ptr(ambient_product) );
+    glUniform4fv( glGetUniformLocation(Program, "DiffuseProduct"), 1, glm::value_ptr(diffuse_product) );
+    glUniform4fv( glGetUniformLocation(Program, "SpecularProduct"), 1, glm::value_ptr(specular_product) );
+	
+    glUniform4fv( glGetUniformLocation(Program, "LightPosition"), 1, glm::value_ptr(light_position) );
+
+    glUniform1f( glGetUniformLocation(Program, "Shininess"), material_shininess );
+}//end initLighting
+
 // OpenGL initialization
 void init() {
     // Need global access to the VAO
@@ -196,6 +230,8 @@ void init() {
     GLuint vPosition = glGetAttribLocation(Program, "vPosition");
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+
+    initLighting();
 
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(Program, "ModelView");

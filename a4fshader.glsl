@@ -2,11 +2,16 @@
    Tara Boulanger (7922331)
    File name:   a4fshader.glsl
 
-   Description: 
+   Description: This program does the colouring for the
+   terrain, whether it's the outlines, or the actual
+   mountains.
 ------------------------------------------------------*/
-#version 150
+#version 400
 
-//in vec4 input_colour;
+in vec4 N, L, E;
+
+uniform vec4 AmbientProduct, DiffuseProduct, SpecularProduct;
+uniform float Shininess;
 
 out vec4 fColor;
 uniform bool Outline;
@@ -22,13 +27,29 @@ uniform vec4 colours[5] = {
 };
 
 
-
 //Use the z value to determine the colours.
 
 void main() {
+    //If we're just drawing the outline...
     if (Outline) {
         fColor = vec4(0.0,0.0,0.0,1.0);
+    //If we're doing the coloured parts
     } else {
-        fColor = vec4(0.0,1.0,1.0,1.0);//input_colour;
+        //fColor = vec4(0.0,1.0,1.0,1.0);//input_colour;
+        vec4 H = normalize( L + E );
+        vec4 ambient = AmbientProduct;
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4  diffuse = Kd * DiffuseProduct;
+
+        float Ks = pow( max(dot(N, H), 0.0), Shininess );
+        vec4  specular = Ks * SpecularProduct;
+        
+        if ( dot(L, N) < 0.0 ) {
+            specular = vec4(0.0, 0.0, 0.0, 1.0);
+        }//end if
+
+        fColor = ambient + diffuse + specular;
+        fColor.a = 1.0;
     }//end if-else
 }//end main

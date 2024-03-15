@@ -6,7 +6,7 @@
    here. Will need to happen elsewhere. Passes the
    vertex positions to the tcs to do the transformations.
 ------------------------------------------------------*/
-#version 150
+#version 400
 
 in vec4 vPosition;
 
