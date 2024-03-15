@@ -34,8 +34,8 @@ int windowHeight = 0;
 // Terrain Requirements
 //---------------------------------------------------------------------------
 const int NUM_PATCHES = 4; //Number of patches in a group
-const int NUM_ROWS = 10;
-const int NUM_COLUMNS = 12;
+const int NUM_ROWS = 15;
+const int NUM_COLUMNS = 20;
 
 typedef glm::vec4 point4;
 typedef glm::vec4 color4;
@@ -131,7 +131,8 @@ point4 patchPoints[GROUP_VERTICES] = {
   point4(  1.0, -0.5, -1.0, 1.0 )
 };
 
-const glm::vec3 START_POSITION = glm::vec3(-14.0,0.0,0.5);
+//Set to this value so that you can see it centered in full screen
+const glm::vec3 START_POSITION = glm::vec3(-40.0,0.0,0.5);
 
 //The colours of the mountains
 glm::vec4 colours[4] = {
@@ -172,35 +173,27 @@ bool displayOutlines = true;
 GLuint Program;
 
 // Model-view matrix uniform location
-GLuint ModelView, Projection, Outline, Tessellation;
+GLuint ModelView, ModelViewInverseTranspose, Projection, Outline, Tessellation;
 
 
 // Start of OpenGL drawing
 //-------------------------------------------------------------------
 
-//Essentially fully taken from example 4
+//Essentially fully taken from example 4, with some modifications for being
+//able to select the colour in the fshader
 void initLighting() {
     // Initialize shader lighting parameters
-    point4 light_position( 0.0, 0.0, -1.0, 0.0 );
-    color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
-    color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
-    color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
+    point4 lightPosition( -2.0, 3.0, -5.0, 1.0 );
+    color4 lightAmbient( 0.2, 0.2, 0.2, 1.0 );
+    color4 lightDiffuse( 1.0, 1.0, 1.0, 1.0 );
+    color4 lightSpecular( 1.0, 1.0, 1.0, 1.0 );
 
-    color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
-    color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
-    color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
-    float  material_shininess = 100.0;
+    float  material_shininess = 5.0;
 
-    color4 ambient_product = light_ambient * material_ambient;
-    color4 diffuse_product = light_diffuse * material_diffuse;
-    color4 specular_product = light_specular * material_specular;
-
-    glUniform4fv( glGetUniformLocation(Program, "AmbientProduct"), 1, glm::value_ptr(ambient_product) );
-    glUniform4fv( glGetUniformLocation(Program, "DiffuseProduct"), 1, glm::value_ptr(diffuse_product) );
-    glUniform4fv( glGetUniformLocation(Program, "SpecularProduct"), 1, glm::value_ptr(specular_product) );
-	
-    glUniform4fv( glGetUniformLocation(Program, "LightPosition"), 1, glm::value_ptr(light_position) );
-
+    glUniform4fv( glGetUniformLocation(Program, "LightAmbient"), 1, glm::value_ptr(lightAmbient) );
+    glUniform4fv( glGetUniformLocation(Program, "LightDiffuse"), 1, glm::value_ptr(lightDiffuse) );
+    glUniform4fv( glGetUniformLocation(Program, "LightSpecular"), 1, glm::value_ptr(lightSpecular) );
+    glUniform4fv( glGetUniformLocation(Program, "LightPosition"), 1, glm::value_ptr(lightPosition) );
     glUniform1f( glGetUniformLocation(Program, "Shininess"), material_shininess );
 }//end initLighting
 
@@ -235,10 +228,12 @@ void init() {
 
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(Program, "ModelView");
+    ModelViewInverseTranspose = glGetUniformLocation(Program, "ModelViewInverseTranspose");
     Projection = glGetUniformLocation(Program, "Projection");
     Outline = glGetUniformLocation(Program, "Outline");
     Tessellation = glGetUniformLocation(Program, "Tessellation");
 
+    //Setting the amount of subdivisions for the tessellation
     glUniform1i(Tessellation, sub);
 
     glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
@@ -260,6 +255,8 @@ void init() {
 //Used for drawing a singular patch
 void drawPatch( glm::mat4 modelView, int patchNum ) {
     glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(modelView));
+    glUniformMatrix4fv( ModelViewInverseTranspose, 1, GL_FALSE,
+       glm::value_ptr(glm::transpose(glm::inverse(modelView))) );
     glUniform1i(Outline, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); //Fill in the vertices
     glDrawArrays(GL_PATCHES, PATCH_VERTICES*patchNum, PATCH_VERTICES);
@@ -312,6 +309,13 @@ void drawTerrain( glm::mat4 modelView ) {
         zOffset -= 4.0f;
         xOffset = START_POSITION.x;
     }//end for
+    //Drawing the last row a bit further down.
+    for ( int i=0; i<NUM_COLUMNS; i++ ) {
+        translation.y = -8.0f;
+        groupView = modelView*glm::translate(glm::mat4(), translation);
+        drawGroup(groupView);
+        xOffset += 4.0f;
+    }//end for
 }//end drawTerrain
 
 
@@ -330,9 +334,8 @@ void display(void) {
 
     trans = glm::translate(trans, Movement);
     if ( Movement.z > 1.0f ) {
-        Movement.z = 0.0;
+        Movement.z = 0.0f;
     }//end if
-    printf("X: %f\tY: %f\tZ: %f\n", Movement.x, Movement.y, Movement.z);
 
     cameraRot = glm::rotate(cameraRot, glm::radians(Tilt[Xaxis]), glm::vec3(1,0,0));
     cameraRot = glm::rotate(cameraRot, glm::radians(Tilt[Zaxis]), glm::vec3(0,0,1));
@@ -372,7 +375,7 @@ void mouse(int button, int state, int x, int y) {
 //WASD keys rotate the camera
 //Number keys change the tesselation values accordingly.
 void keyboard(unsigned char key, int x, int y) {
-    float rate = 1.0f; //The angle to tilt the camera by
+    float rate = 0.5f; //The angle to tilt the camera by
     switch (key) {
         case 033: // Escape Key
         case 'q':

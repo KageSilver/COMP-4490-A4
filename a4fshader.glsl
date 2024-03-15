@@ -8,9 +8,10 @@
 ------------------------------------------------------*/
 #version 400
 
-in vec4 N, L, E;
+in vec3 N, L, E;
+in float yValue;
 
-uniform vec4 AmbientProduct, DiffuseProduct, SpecularProduct;
+uniform vec4 LightAmbient, LightDiffuse, LightSpecular;
 uniform float Shininess;
 
 out vec4 fColor;
@@ -26,6 +27,8 @@ uniform vec4 colours[5] = {
     vec4(0.0,0.0,0.0,1.0) //Black for outlines
 };
 
+uniform float intervals[4] = {-0.25,0.0,0.3,0.5};
+
 
 //Use the z value to determine the colours.
 
@@ -35,15 +38,29 @@ void main() {
         fColor = vec4(0.0,0.0,0.0,1.0);
     //If we're doing the coloured parts
     } else {
-        //fColor = vec4(0.0,1.0,1.0,1.0);//input_colour;
-        vec4 H = normalize( L + E );
-        vec4 ambient = AmbientProduct;
+        //Choosing which colour to display
+        vec4 chosenColor = vec4(0.0,0.0,0.0,1.0);
+        if ( yValue <= intervals[3] ) {
+            chosenColor = colours[3];
+            if ( yValue <= intervals[2] ) {
+                chosenColor = colours[2];
+                if ( yValue <= intervals[1] ) {
+                    chosenColor = colours[1];
+                    if ( yValue <= intervals[0] ) {
+                        chosenColor = colours[0];
+                    }//end if
+                }//end if
+            }//end if
+        }//end if
+
+        vec3 H = normalize( L + E );
+        vec4 ambient = LightAmbient*chosenColor;
 
         float Kd = max( dot(L, N), 0.0 );
-        vec4  diffuse = Kd * DiffuseProduct;
+        vec4  diffuse = Kd * LightDiffuse*chosenColor;
 
         float Ks = pow( max(dot(N, H), 0.0), Shininess );
-        vec4  specular = Ks * SpecularProduct;
+        vec4  specular = Ks * LightSpecular*chosenColor;
         
         if ( dot(L, N) < 0.0 ) {
             specular = vec4(0.0, 0.0, 0.0, 1.0);
