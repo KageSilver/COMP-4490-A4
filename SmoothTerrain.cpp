@@ -31,12 +31,11 @@ int windowWidth = 0;
 int windowHeight = 0;
 
 
-// Bezier Patches Requirements
+// Terrain Requirements
 //---------------------------------------------------------------------------
-const int NUM_PATCHES = 4;
-const int NUM_GROUPS = 20; //Arbitrary, fix later
-const int ALL_PATCHES = 1;//NUM_PATCHES*NUM_GROUPS;
-const int NUM_COLOURS = 5;
+const int NUM_PATCHES = 4; //Number of patches in a group
+const int NUM_ROWS = 10;
+const int NUM_COLUMNS = 12;
 
 typedef glm::vec4 point4;
 
@@ -132,31 +131,29 @@ point4 patchPoints[GROUP_VERTICES] = {
 };
 
 
-const int WORLD_VERTICES = GROUP_VERTICES*NUM_GROUPS;
-
-glm::vec4 worldVertices[WORLD_VERTICES];
-
-//The colours of the mountains
-glm::vec4 colours[NUM_COLOURS] = {
-    glm::vec4(0.0588,0.3216,0.7294,1.0), //Blue water
-    glm::vec4(0.2667,0.6196,0.1137,1.0), //Green grass
-    glm::vec4(0.6627,0.6627,0.6627,1.0), //Grey mountains
-    glm::vec4(0.8706,0.9882,1.0,1.0), //White peaks
-    glm::vec4(0.0,0.0,0.0,1.0) //Black for triangles
-};
+const glm::vec3 START_POSITION = glm::vec3(-14.0,0.0,0.5);
 
 
 // Camera Requirements
 //--------------------------------------------------------------------------
-const float CAMERA_SPEED = 0.05f;
+const float FLY_SPEED = 0.01f; //How fast the camera is flying over the terrain
+const float EXTREME = 10.0f;
+
+// Array of rotation angles for each coordinate axis, in angles (taken from ex8)
+enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
+int Axis = Yaxis;
+GLfloat Tilt[NumAxes] = { 0.0, 0.0, 0.0 };
+glm::vec3 CameraPosition = glm::vec3(0.0,0.0,0.0);
+
 bool isMoving = true;
+glm::vec3 Movement = glm::vec3(0.0,0.0,FLY_SPEED);
 
 
 // Subdivisions
 //---------------------------------------------------------------------------
-int m = 6;
-int n = 1;
-//pow(n+m,2)
+int m = 2;
+int n = 0;
+int sub = pow(n+m,2);
 
 bool displayOutlines = true;
 
@@ -167,49 +164,7 @@ bool displayOutlines = true;
 GLuint Program;
 
 // Model-view matrix uniform location
-GLuint ModelView, Projection, Outline;
-
-
-
-// Splines Functions
-//----------------------------------------------------------------------------
-
-int counterBezier = 0;
-// Used to create the vertices along a bezier spline segment.
-// Takes in a variable for the offset positions of the control points.
-//Will need to translate each patch in the group by 2 units in whichever
-//direction so that it can generate the patch accordingly.
-//The control points in the corners must be connected.
-void createPatch(int p0, int p1, int p2, int p3) {
-    float x = 0;
-    float y = 0;
-    glm::vec4 tValues;
-    glm::vec4 xVertex;
-    glm::vec4 yVertex;
-    glm::mat4 xValues;
-}//end createPatch
-
-// Used to build all of the vertices for the terrain
-void buildTerrain() {
-    //Redo logic here
-    for (int j=0; j<5; j++) {
-        for (int i = 0; i<PATCH_VERTICES; i++) {
-            //Setting the control points
-            int points[4] = {i-1,i,i+1,i+2};
-            if ( i == 0 ) {
-                points[0] = PATCH_VERTICES-1;
-            } else if ( (i+2) % PATCH_VERTICES == 0 ) {
-                points[3] = 0;
-            } else if ( (i+1) % PATCH_VERTICES == 0 ) {
-                points[2] = 0;
-                points[3] = 1;
-            }//end if-else
-            if ( i % 4 == 0 ) {
-                createPatch(points[0],points[1],points[2],points[3]);
-            }//end if
-        }//end for
-    }//end for
-}//end buildTerrain
+GLuint ModelView, Projection, Outline, Tessellation;
 
 
 // Start of OpenGL drawing
@@ -217,7 +172,6 @@ void buildTerrain() {
 
 // OpenGL initialization
 void init() {
-    //buildTerrain();
     // Need global access to the VAO
     GLuint VAO;
     // Create vertex array objects
@@ -231,9 +185,8 @@ void init() {
     // Creating and initializing a buffer object
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    // Making sure it has enough space for the whole terrain
+    // Making sure it has enough space for a single group of patches
     glBufferData(GL_ARRAY_BUFFER, sizeof(patchPoints), patchPoints, GL_STATIC_DRAW);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(patchesVertices), patchesVertices, GL_STATIC_DRAW);
     
     // Load shader set
     Program = InitShader("a4vshader.glsl", "a4fshader.glsl", "a4tcs.glsl", "a4tes.glsl");
@@ -248,6 +201,9 @@ void init() {
     ModelView = glGetUniformLocation(Program, "ModelView");
     Projection = glGetUniformLocation(Program, "Projection");
     Outline = glGetUniformLocation(Program, "Outline");
+    Tessellation = glGetUniformLocation(Program, "Tessellation");
+
+    glUniform1i(Tessellation, sub);
 
     glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
 
@@ -258,38 +214,69 @@ void init() {
 
     glShadeModel(GL_FLAT);
 
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(0.539, 0.7539, 0.8984, 1.0);
 }//end init
 
 
 // Helper drawing function
 //----------------------------------------------------------------
 
-//Used for drawing the splines in our scene
-void drawPatches( glm::mat4 model_view ) {
-
-    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view));
+//Used for drawing a singular patch
+void drawPatch( glm::mat4 modelView, int patchNum ) {
+    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(modelView));
     glUniform1i(Outline, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); //Fill in the vertices
-
-    glDrawArrays(GL_PATCHES, 0, PATCH_VERTICES);
-    //Fill in all of the patches
-    //for ( int i=0; i<ALL_PATCHES; i++ ) {
-    //    glDrawArrays(GL_PATCHES, i*ALL_PATCHES, PATCH_VERTICES);
-    //}//end for
+    glDrawArrays(GL_PATCHES, PATCH_VERTICES*patchNum, PATCH_VERTICES);
     
-    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(model_view * glm::translate(glm::mat4(), glm::vec3(0.0,0.0,0.001))));
-    glUniform1i(Outline, 1);
+    glUniformMatrix4fv(ModelView, 1, GL_FALSE, glm::value_ptr(modelView * glm::translate(glm::mat4(), glm::vec3(0.0,0.0,0.001))));
+    if (displayOutlines) {
+        glUniform1i(Outline, 1);
+    }//end if
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //Drawing the outlines
     glLineWidth(1.5f);
-    glDrawArrays(GL_PATCHES, 0, PATCH_VERTICES);
+    glDrawArrays(GL_PATCHES, PATCH_VERTICES*patchNum, PATCH_VERTICES);
+}//end drawPatch
 
-    //Draw all of the outlines to make up the patch
-    //for ( int i=0; i<ALL_PATCHES; i++ ) {
-    //    glDrawArrays(GL_PATCHES, i*ALL_PATCHES, PATCH_VERTICES);
-    //}//end for
 
-}//end drawPatches
+//Used for drawing a group of 4 patches on the terrain
+void drawGroup( glm::mat4 modelView ) {
+    //First patch
+    glm::mat4 patchModel = modelView;
+    drawPatch(patchModel,0);
+
+    //Second patch
+    patchModel = modelView*glm::translate(glm::mat4(), glm::vec3(2.0,0.0,0.0));
+    drawPatch(patchModel,1);
+
+    //Third patch
+    patchModel = modelView*glm::translate(glm::mat4(), glm::vec3(0.0,0.0,2.0));
+    drawPatch(patchModel,2);
+
+    //Fourth patch
+    patchModel = modelView*glm::translate(glm::mat4(), glm::vec3(2.0,0.0,2.0));
+    drawPatch(patchModel,3);
+}//end drawGroup
+
+
+//Used for generating the entire terrain
+void drawTerrain( glm::mat4 modelView ) {
+    glm::mat4 groupView = modelView;
+    glm::vec3 translation = glm::vec3();
+    float xOffset = START_POSITION.x;
+    float zOffset = START_POSITION.z;
+    //Need to offset them by 4 units as each group is 4 units wide
+    for ( int i=0; i<NUM_ROWS; i++ ) {
+        translation.z = zOffset;
+        for ( int j=0; j<NUM_COLUMNS; j++ ) {
+            translation.x = xOffset;
+            groupView = modelView*glm::translate(glm::mat4(),translation);
+            drawGroup(groupView);
+            xOffset += 4.0f;
+        }//end for
+        zOffset -= 4.0f;
+        xOffset = START_POSITION.x;
+    }//end for
+}//end drawTerrain
 
 
 // OpenGL display
@@ -298,16 +285,27 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Generate the model-view matrix
-    const glm::vec3 viewer_pos(0.0, 0.0, 2.0);
+    const glm::vec3 viewerPos(0.0, 1.0, 0.0);
     
-    glm::mat4 trans, cameraRot, rot, model_view;
+    glm::mat4 trans, cameraRot, rot, modelView;
 
-    trans = glm::translate(trans, -viewer_pos);
+    //Moving to the viewers position
+    trans = glm::translate(trans, -viewerPos);
 
-    model_view = trans;//*glm::scale(glm::mat4(), glm::vec3(0.5,0.5,0.5));
+    trans = glm::translate(trans, Movement);
+    if ( Movement.z > 1.0f ) {
+        Movement.z = 0.0;
+    }//end if
+    printf("X: %f\tY: %f\tZ: %f\n", Movement.x, Movement.y, Movement.z);
 
-    //Drawing the splines
-    drawPatches(model_view);
+    cameraRot = glm::rotate(cameraRot, glm::radians(Tilt[Xaxis]), glm::vec3(1,0,0));
+    cameraRot = glm::rotate(cameraRot, glm::radians(Tilt[Zaxis]), glm::vec3(0,0,1));
+
+    modelView = modelView*trans*glm::scale(glm::mat4(), glm::vec3(0.25,0.25,0.25));
+    modelView = modelView*cameraRot;
+
+    //Drawing the entire terrain
+    drawTerrain(modelView);
 
     glutSwapBuffers();
 }//end display
@@ -317,7 +315,9 @@ void display(void) {
 //----------------------------------------------------------------------------
 
 void update(void){
-    //Move the terrain in this function
+    if ( isMoving ) {
+        Movement[Zaxis] += FLY_SPEED;
+    }//end if
 }//end update
 
 //For mouse inputs
@@ -336,6 +336,7 @@ void mouse(int button, int state, int x, int y) {
 //WASD keys rotate the camera
 //Number keys change the tesselation values accordingly.
 void keyboard(unsigned char key, int x, int y) {
+    float rate = 1.0f; //The angle to tilt the camera by
     switch (key) {
         case 033: // Escape Key
         case 'q':
@@ -343,43 +344,77 @@ void keyboard(unsigned char key, int x, int y) {
             exit(EXIT_SUCCESS);
             break;
         case '1':
-            n = 1;
+            n = 0;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case '2':
-            n = 2;
+            n = 1;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case '3':
-            n = 3;
+            n = 2;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case '4':
-            n = 4;
+            n = 3;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case '5':
-            n = 5;
+            n = 4;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case '6':
-            n = 6;
+            n = 5;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break; 
         case '7':
-            n = 7;
+            n = 6;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break; 
         case '8':
-            n = 8;
+            n = 7;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break; 
         case '9':
-            n = 9;
+            n = 8;
+            sub = pow(n+m,2);
+            glUniform1i(Tessellation, sub);
             break;
         case 'w':
             //tilt camera down by rotating down x axis
+            if ( CameraPosition.x > -EXTREME/2 ) {
+                CameraPosition.x -= rate;
+                Tilt[Xaxis] += rate;
+            }//end if
             break;
         case 'a':
             //tilt camera left by rotating left along z axis
+            if ( CameraPosition.z < EXTREME ) {
+                CameraPosition.z += rate;
+                Tilt[Zaxis] -= rate;
+            }//end if
             break;
         case 's':
             //tilt camera up by rotating up on x axis
+            if ( CameraPosition.x < EXTREME/2 ) {
+                CameraPosition.x += rate;
+                Tilt[Xaxis] -= rate;
+            }//end if
             break;
         case 'd':
             //tilt camera right by rotating right along z axis
+            if ( CameraPosition.z > -EXTREME ) {
+                CameraPosition.z -= rate;
+                Tilt[Zaxis] += rate;
+            }//end if
             break;
         case 'z':
             if (displayOutlines)
@@ -396,7 +431,7 @@ void reshape (int width, int height) {
     glViewport( 0, 0, width, height );
 
     GLfloat aspect = GLfloat(width)/height;
-    glm::mat4  projection = glm::perspective( glm::radians(45.0f), aspect, 0.5f, 10.0f );
+    glm::mat4  projection = glm::perspective( glm::radians(45.0f), aspect, 0.5f, 30.0f );
 
     glUniformMatrix4fv( Projection, 1, GL_FALSE, glm::value_ptr(projection) );
 }//end reshape

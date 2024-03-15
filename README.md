@@ -9,4 +9,4 @@ I am running this on a Windows 10 PC with an AMD Ryzen 5 5600X 6-Core Processor 
 ### Other notes:
 I used parts of my assignment 3 solution and the tesselation examples provided on UMLearn as a base example for my programs. It also uses the example4 shaders as a base for the illumination shaders.
 
-<br> 
+<br> It would appear as though numbers 7-9 end up producing the same amount of tessellations for my graphics card.

@@ -19,6 +19,8 @@
 // the number of vertices in the output patch; here it is the same as input
 layout (vertices = 16) out;
 
+uniform int Tessellation;
+
 // the color array is received from the output of the vertex shader
 // (again, one array element per vertex in the patch)
 // the output is sent to the tessellation evaluation shader
@@ -27,12 +29,12 @@ layout (vertices = 16) out;
 
 void main() {
 	if (gl_InvocationID == 0) {
-		gl_TessLevelInner[0] = 11;
-		gl_TessLevelInner[1] = 11;
-		gl_TessLevelOuter[0] = 11;
-		gl_TessLevelOuter[1] = 11;
-		gl_TessLevelOuter[2] = 11;
-		gl_TessLevelOuter[3] = 11;
+		gl_TessLevelInner[0] = Tessellation;
+		gl_TessLevelInner[1] = Tessellation;
+		gl_TessLevelOuter[0] = Tessellation;
+		gl_TessLevelOuter[1] = Tessellation;
+		gl_TessLevelOuter[2] = Tessellation;
+		gl_TessLevelOuter[3] = Tessellation;
 	}//end if
 	
 	// copy input to output

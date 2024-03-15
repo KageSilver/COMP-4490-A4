@@ -27,20 +27,51 @@ layout (quads, equal_spacing, ccw) in;
 uniform mat4 ModelView;
 uniform mat4 Projection;
 
+mat4 BEZIER = mat4(-1, 3,-3, 1,
+					3,-6, 3, 0,
+				   -3, 3, 0, 0,
+				    1, 0, 0, 0);
+
+mat4 BEZIER_T = transpose(BEZIER);
+
 //in vec4 colorTES[];
 //out vec4 out_colour;
 
 void main() {
 	float u = gl_TessCoord.s;
+	vec4 vecU = vec4(pow(u,3), pow(u,2), u, 1);
 	float v = gl_TessCoord.t;
+	vec4 vecV = vec4(pow(v,3), pow(v,2), v, 1);
+	
+	mat4 pointsX = mat4(gl_in[0].gl_Position.x, gl_in[1].gl_Position.x, gl_in[2].gl_Position.x,  gl_in[3].gl_Position.x,
+						gl_in[4].gl_Position.x, gl_in[5].gl_Position.x, gl_in[6].gl_Position.x,  gl_in[7].gl_Position.x,
+						gl_in[8].gl_Position.x, gl_in[9].gl_Position.x, gl_in[10].gl_Position.x, gl_in[11].gl_Position.x,
+						gl_in[12].gl_Position.x,gl_in[13].gl_Position.x,gl_in[14].gl_Position.x, gl_in[15].gl_Position.x);
+	mat4 pointsY = mat4(gl_in[0].gl_Position.y, gl_in[1].gl_Position.y,  gl_in[2].gl_Position.y, gl_in[3].gl_Position.y,
+						gl_in[4].gl_Position.y, gl_in[5].gl_Position.y,  gl_in[6].gl_Position.y, gl_in[7].gl_Position.y,
+						gl_in[8].gl_Position.y, gl_in[9].gl_Position.y,  gl_in[10].gl_Position.y,gl_in[11].gl_Position.y,
+						gl_in[12].gl_Position.y,gl_in[13].gl_Position.y, gl_in[14].gl_Position.y,gl_in[15].gl_Position.y);
+	mat4 pointsZ = mat4(gl_in[0].gl_Position.z, gl_in[1].gl_Position.z, gl_in[2].gl_Position.z,  gl_in[3].gl_Position.z,
+						gl_in[4].gl_Position.z, gl_in[5].gl_Position.z, gl_in[6].gl_Position.z,  gl_in[7].gl_Position.z,
+						gl_in[8].gl_Position.z, gl_in[9].gl_Position.z, gl_in[10].gl_Position.z, gl_in[11].gl_Position.z,
+						gl_in[12].gl_Position.z,gl_in[13].gl_Position.z,gl_in[14].gl_Position.z, gl_in[15].gl_Position.z);
+
+	//x(u,v)=U.Mb.Gbx.Mb^t.v^t
+	//Need to dot since we need to transpose v
+	float x = dot(vecU,(BEZIER*(pointsX*(BEZIER_T*(vecV)))));
+	float y = dot(vecU,(BEZIER*(pointsY*(BEZIER_T*(vecV)))));
+	float z = dot(vecU,(BEZIER*(pointsZ*(BEZIER_T*(vecV)))));
+
+
+	vec4 pos = vec4(x,y,z,1);
 
 	//Only renders the corners
 	//Use the bezier patches stuff
 	//Multiply it through the bezier matrix and the control point matrix and u vector and then v vector, and transpose bezier matrix
 	//Do it for x, y, and z coordinates, then put it in the position
-	vec4 p1 = gl_in[0].gl_Position*(1-u) + gl_in[3].gl_Position*u;
+	/*vec4 p1 = gl_in[0].gl_Position*(1-u) + gl_in[3].gl_Position*u;
 	vec4 p2 = gl_in[12].gl_Position*(1-u) + gl_in[15].gl_Position*u;
-	vec4 pos = p1*(1-v) + p2*v;
+	vec4 pos = p1*(1-v) + p2*v;*/
 	
 	// pos is now vertex position interpolated from barycentric coordinates
 	gl_Position = Projection * ModelView * pos;
